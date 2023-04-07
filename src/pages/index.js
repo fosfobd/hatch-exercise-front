@@ -1,172 +1,180 @@
-import Image from 'next/image'
+import { useState } from 'react'
+// import { useState, useEffect } from 'react'
+// import Image from 'next/image'
 import { Inter } from 'next/font/google'
-
 const inter = Inter({ subsets: ['latin'] })
+import useSWR from 'swr'
+import axios from 'axios'
+
+const fetcher = (...args) => fetch(...args).then((res) => res.json())
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col p-12 sm:p-18 lg:p-24">
+
+  const { data, mutate } = useSWR('http://localhost:9090/tasks', fetcher, { refreshInterval: 8000 })
+  const [ addTaskTextFieldValue, setAddTaskTextFieldValue ] = useState('');
+
+  if (!data) {
+    return <div>Loading...</div>
+  }
+
+  const deleteAllTasksHandler = async () => {
+    
+    const url = 'http://localhost:9090/tasks';
+    await axios.delete(url, payload);
+
+    mutate('http://localhost:9090/tasks', [], {
+      optimisticData: []
+    });
+
+  }
+
+  const addTaskHandler = async (e) => {
+
+    if (addTaskTextFieldValue !== '') {
+
+      // clear the text field
+      setAddTaskTextFieldValue('');
       
-      <div className="w-full mb-8 sm:mb-16 sm:flex sm:flex-row sm:justify-between">
+      // prepare the payload for the req to backend
+      const payload = {
+        label: addTaskTextFieldValue
+      };
 
-        <div className="w-full">
-          <h1 className="font-bold">Marvelous v2.0</h1>
+      // prepare optimistic data
+      const newData = {
+        todo: [...data.todo, {id: null, label: addTaskTextFieldValue, done: false}],
+        done: data.done
+      };
+
+      // console.log(`addTaskHandler - newdata: ${JSON.stringify(newData, null, 2)}`);
+      const url = 'http://localhost:9090/tasks';
+      await axios.post(url, payload);
+      
+      // refresh ui
+      mutate('http://localhost:9090/tasks', newData, {
+        optimisticData: newData
+      });
+
+    }
+
+  }
+
+  const patchTaskHandler = async (task, isDone, index) => {
+
+    // prepare payload to send to backend with update
+    const payload = {
+      id: task.id,
+      done: isDone
+    };
+
+    // prepare optimistic data
+    const newData = {};
+    if (isDone) {
+
+      // so the task is done, lets...
+      // remove the task from todo
+      newData.todo = data.todo.splice(index, 1);
+      // and add it to done
+      newData.done = [...data.done, task];
+
+    } else {
+
+      // so the task was done, but it's not, lets...
+      // remove the task from done
+      newData.done = data.done.splice(index, 1);
+      // and put it back in todo
+      newData.todo = [...data.todo, task];
+
+    }
+
+    const url = 'http://localhost:9090/tasks';
+    await axios.patch(url, payload);
+
+    // refresh ui
+    mutate('http://localhost:9090/tasks', newData, {
+      optimisticData: newData
+    });
+
+  }
+
+  const search = async (e) => {
+
+    console.log(`search for ${e?.target?.value}`);
+    
+    // const url = `http://localhost:9090/tasks`;
+    // await axios.get(url);
+
+  }
+
+  return (
+    <main className='min-h-screen flex flex-col p-12 sm:p-18 lg:p-24'>
+
+      <div className='w-full mb-8 sm:mb-16 sm:flex sm:flex-row sm:justify-between'>
+
+        <div className='w-full'>
+          <h1 className='font-bold text-xl'>Marvelous v2.0</h1>
         </div>
-        <div className="w-full text-right">
-          <button className="px-2 py-2 text-sky-500 text-sm rounded hover:underline">Delete all tasks</button>
+        <div className='w-full text-right'>
+          <button className='px-2 py-2 text-sky-500 text-sm rounded hover:underline' onClick={deleteAllTasksHandler} >Delete all tasks</button>
         </div>
 
       </div>
 
-      <div className="w-full mb-8 sm:flex sm:flex-row sm:gap-x-4 md:gap-x-12 sm:justify-between">
+      <div className='w-full mb-8 sm:flex sm:flex-row sm:gap-x-4 md:gap-x-12 sm:justify-between'>
 
-        <div className="w-full mb-4 justify-between flex sm:justify-start sm:mb-0" id="add-task-wrapper">
-          <input type="text" className="w-full rounded mr-4" id="add-task-field" />
-          <button className="px-4 py-3 bg-blue-400 hover:bg-blue-600 text-white text-sm rounded" id="add-task-btn">Add</button>
+        <div className='w-full mb-4 justify-between flex sm:justify-start sm:mb-0' id='add-task-wrapper'>
+          <input type='text' className='w-full rounded mr-4' id='add-task-field' value={addTaskTextFieldValue} onChange={(e) => {
+            setAddTaskTextFieldValue(e.target.value)
+          }} />
+          <button className='px-4 py-3 bg-blue-400 hover:bg-blue-600 text-white text-sm rounded' id='add-task-btn' onClick={addTaskHandler} >Add</button>
         </div>
-        <div className="w-full" id="search-wrapper">
-          <input type="text" className="w-full rounded" id="search-field" placeholder='Search...' />
+        <div className='w-full' id='search-wrapper'>
+          <input type='text' className='w-full rounded' id='search-field' placeholder='Search...' onChange={search}/>
         </div>
 
       </div>
 
-      <div className="w-full sm:flex sm:flex-row-reverse sm:gap-x-4 md:gap-x-12 sm:justify-between">
+      <div className='w-full sm:flex sm:flex-row-reverse sm:gap-x-4 md:gap-x-12 sm:justify-between'>
 
-        <div className="w-full flex flex-col" id="done-list">
-          <div className="w-full border-b	border-black border-solid" id="done-list-header">
+        <div className='w-full flex flex-col' id='done-list'>
+          <div className='w-full border-b	border-black border-solid' id='done-list-header'>
             <h3>Done</h3>
           </div>
-          <div className="w-full" id="done-list-table"></div>
+          <div className='w-full flex flex-col py-4 px-2' id='done-list-table'>
+            { data?.done?.map((task, i) => (
+              <div className='w-full flex flex-row items-start mb-2' key={`done-list-row-${task.id}`} >
+                <input type='checkbox' onChange={async (e) => {
+                  
+                  console.log(`toggled checkbox ${task.id} - ${e.target.checked}`)
+                  await patchTaskHandler(task, e.target.checked, i)
+
+                }} defaultChecked={task.done} value={task.id} className='mt-0.5 mr-2 rounded' />
+                <p className='text-sm'>{task.label}</p>
+              </div>
+            )) }
+          </div>
         </div>
-        <div className="w-full flex flex-col" id="todo-list">
-          <div className="w-full border-b	border-black border-solid" id="todo-list-header">
+        <div className='w-full flex flex-col' id='todo-list'>
+          <div className='w-full border-b	border-black border-solid' id='todo-list-header'>
             <h3>To Do</h3>
           </div>
-          <div className="w-full" id="todo-list-table"></div>
+          <div className='w-full flex flex-col py-4 px-2' id='todo-list-table'>
+            { data?.todo?.map((task, i) => (
+              <div className='w-full flex flex-row items-start mb-2' key={`todo-list-row-${task.id}`} >
+                <input type='checkbox' onChange={async (e) => {
+                  
+                  console.log(`toggled checkbox ${task.id} - ${e.target.checked}`)
+                  await patchTaskHandler(task, e.target.checked, i)
+
+                }} defaultChecked={task.done} value={task.id} className='mt-0.5 mr-2 rounded' />
+                <p className='text-sm'>{task.label}</p>
+              </div>
+            )) }
+          </div>
         </div>
 
       </div>
 
     </main>
   );
-}
-
-function old() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
 }
