@@ -5,6 +5,54 @@ const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
   return (
+    <main className="flex min-h-screen flex-col p-12 sm:p-18 lg:p-24">
+      
+      <div className="w-full mb-8 sm:mb-16 sm:flex sm:flex-row sm:justify-between">
+
+        <div className="w-full">
+          <h1 className="font-bold">Marvelous v2.0</h1>
+        </div>
+        <div className="w-full text-right">
+          <button className="px-2 py-2 text-sky-500 text-sm rounded hover:underline">Delete all tasks</button>
+        </div>
+
+      </div>
+
+      <div className="w-full mb-8 sm:flex sm:flex-row sm:gap-x-4 md:gap-x-12 sm:justify-between">
+
+        <div className="w-full mb-4 justify-between flex sm:justify-start sm:mb-0" id="add-task-wrapper">
+          <input type="text" className="w-full rounded mr-4" id="add-task-field" />
+          <button className="px-4 py-3 bg-blue-400 hover:bg-blue-600 text-white text-sm rounded" id="add-task-btn">Add</button>
+        </div>
+        <div className="w-full" id="search-wrapper">
+          <input type="text" className="w-full rounded" id="search-field" placeholder='Search...' />
+        </div>
+
+      </div>
+
+      <div className="w-full sm:flex sm:flex-row-reverse sm:gap-x-4 md:gap-x-12 sm:justify-between">
+
+        <div className="w-full flex flex-col" id="done-list">
+          <div className="w-full border-b	border-black border-solid" id="done-list-header">
+            <h3>Done</h3>
+          </div>
+          <div className="w-full" id="done-list-table"></div>
+        </div>
+        <div className="w-full flex flex-col" id="todo-list">
+          <div className="w-full border-b	border-black border-solid" id="todo-list-header">
+            <h3>To Do</h3>
+          </div>
+          <div className="w-full" id="todo-list-table"></div>
+        </div>
+
+      </div>
+
+    </main>
+  );
+}
+
+function old() {
+  return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
         <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
