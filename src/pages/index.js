@@ -1,6 +1,4 @@
 import { useState } from 'react'
-// import { useState, useEffect } from 'react'
-// import Image from 'next/image'
 import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 import useSWR from 'swr'
@@ -10,21 +8,21 @@ const fetcher = (...args) => fetch(...args).then((res) => res.json())
 
 export default function Home() {
 
-  const { data, mutate } = useSWR('http://localhost:9090/tasks', fetcher, { refreshInterval: 8000 })
   const [ addTaskTextFieldValue, setAddTaskTextFieldValue ] = useState('');
+  const [ searchTextFieldValue, setSearchTextFieldValue ] = useState('');
+  const { data, mutate } = useSWR('http://localhost:9090/tasks', fetcher, { refreshInterval: 8000 })
+  let todo = [];
+  let done = [];
 
-  if (!data) {
-    return <div>Loading...</div>
+  const filterTasks = (obj, val) => {
+    return obj.filter(el => el.label.includes(val));
   }
 
   const deleteAllTasksHandler = async () => {
     
     const url = 'http://localhost:9090/tasks';
     await axios.delete(url, payload);
-
-    mutate('http://localhost:9090/tasks', [], {
-      optimisticData: []
-    });
+    mutate([], { optimisticData: [] });
 
   }
 
@@ -42,18 +40,15 @@ export default function Home() {
 
       // prepare optimistic data
       const newData = {
-        todo: [...data.todo, {id: null, label: addTaskTextFieldValue, done: false}],
+        todo: [...data.todo, {id: '', label: addTaskTextFieldValue, done: false}],
         done: data.done
       };
 
-      // console.log(`addTaskHandler - newdata: ${JSON.stringify(newData, null, 2)}`);
       const url = 'http://localhost:9090/tasks';
       await axios.post(url, payload);
       
       // refresh ui
-      mutate('http://localhost:9090/tasks', newData, {
-        optimisticData: newData
-      });
+      mutate(newData, { optimisticData: newData });
 
     }
 
@@ -75,7 +70,7 @@ export default function Home() {
       // remove the task from todo
       newData.todo = data.todo.splice(index, 1);
       // and add it to done
-      newData.done = [...data.done, task];
+      newData.done = [...data.done, {id: task.id, done: isDone, label: task.label}];
 
     } else {
 
@@ -83,7 +78,7 @@ export default function Home() {
       // remove the task from done
       newData.done = data.done.splice(index, 1);
       // and put it back in todo
-      newData.todo = [...data.todo, task];
+      newData.todo = [...data.todo, {id: task.id, done: isDone, label: task.label}];
 
     }
 
@@ -91,18 +86,43 @@ export default function Home() {
     await axios.patch(url, payload);
 
     // refresh ui
-    mutate('http://localhost:9090/tasks', newData, {
-      optimisticData: newData
-    });
+    // mutate('http://localhost:9090/tasks', newData, {
+    mutate(newData, { optimisticData: newData });
 
   }
 
-  const search = async (e) => {
+  const searchHandler = async (val) => {
 
-    console.log(`search for ${e?.target?.value}`);
+    setSearchTextFieldValue(val);
     
-    // const url = `http://localhost:9090/tasks`;
-    // await axios.get(url);
+    if (val && val !== '') {
+
+      // filter locally
+      mutate(async (current) => {
+        return {
+          todo: filterTasks(current.todo, val),
+          done: filterTasks(current.done, val)
+        };
+      }, { revalidate: true });
+
+    }
+
+  }
+
+  if (!data) {
+    
+    return <div>Loading...</div>
+
+  } else {
+    
+    // this allows us to filter on autorefreshes based on what's in the search box
+    if (searchTextFieldValue) {
+      todo = filterTasks(data.todo, searchTextFieldValue);
+      done = filterTasks(data.done, searchTextFieldValue);
+    } else {
+      todo = data.todo;
+      done = data.done;
+    }    
 
   }
 
@@ -129,7 +149,9 @@ export default function Home() {
           <button className='px-4 py-3 bg-blue-400 hover:bg-blue-600 text-white text-sm rounded' id='add-task-btn' onClick={addTaskHandler} >Add</button>
         </div>
         <div className='w-full' id='search-wrapper'>
-          <input type='text' className='w-full rounded' id='search-field' placeholder='Search...' onChange={search}/>
+          <input type='text' className='w-full rounded' id='search-field' placeholder='Search...' value={searchTextFieldValue} onChange={(e) => {
+            searchHandler(e.target.value);
+          }} />
         </div>
 
       </div>
@@ -141,7 +163,7 @@ export default function Home() {
             <h3>Done</h3>
           </div>
           <div className='w-full flex flex-col py-4 px-2' id='done-list-table'>
-            { data?.done?.map((task, i) => (
+            { done.map((task, i) => (
               <div className='w-full flex flex-row items-start mb-2' key={`done-list-row-${task.id}`} >
                 <input type='checkbox' onChange={async (e) => {
                   
@@ -159,7 +181,7 @@ export default function Home() {
             <h3>To Do</h3>
           </div>
           <div className='w-full flex flex-col py-4 px-2' id='todo-list-table'>
-            { data?.todo?.map((task, i) => (
+            { todo.map((task, i) => (
               <div className='w-full flex flex-row items-start mb-2' key={`todo-list-row-${task.id}`} >
                 <input type='checkbox' onChange={async (e) => {
                   
@@ -177,4 +199,5 @@ export default function Home() {
 
     </main>
   );
+  
 }
