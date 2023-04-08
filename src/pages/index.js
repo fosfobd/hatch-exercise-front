@@ -4,13 +4,15 @@ const inter = Inter({ subsets: ['latin'] })
 import useSWR from 'swr'
 import axios from 'axios'
 
-const fetcher = (...args) => fetch(...args).then((res) => res.json())
+const fetcher = (...args) => fetch(...args).then((res) => res.json());
+const apiHost = process.env.NEXT_PUBLIC_API_HOST;
+const tasksEndpoint = process.env.NEXT_PUBLIC_TASKS_ENDPOINT;
 
 export default function Home() {
 
   const [ addTaskTextFieldValue, setAddTaskTextFieldValue ] = useState('');
   const [ searchTextFieldValue, setSearchTextFieldValue ] = useState('');
-  const { data, mutate } = useSWR('http://localhost:9090/tasks', fetcher, { refreshInterval: 8000 })
+  const { data, mutate } = useSWR(`${apiHost}${tasksEndpoint}`, fetcher, { refreshInterval: 8000 })
   let todo = [];
   let done = [];
 
@@ -20,9 +22,10 @@ export default function Home() {
 
   const deleteAllTasksHandler = async () => {
     
-    const url = 'http://localhost:9090/tasks';
-    await axios.delete(url, payload);
-    mutate([], { optimisticData: [] });
+    const url = `${apiHost}${tasksEndpoint}`;
+    await axios.delete(url);
+    const newData = {todo: [], done: []};
+    mutate(newData, { optimisticData: newData, revalidate: true });
 
   }
 
@@ -44,7 +47,7 @@ export default function Home() {
         done: data.done
       };
 
-      const url = 'http://localhost:9090/tasks';
+      const url = `${apiHost}${tasksEndpoint}`;
       await axios.post(url, payload);
       
       // refresh ui
@@ -82,7 +85,7 @@ export default function Home() {
 
     }
 
-    const url = 'http://localhost:9090/tasks';
+    const url = `${apiHost}${tasksEndpoint}`;
     await axios.patch(url, payload);
 
     // refresh ui
@@ -199,5 +202,5 @@ export default function Home() {
 
     </main>
   );
-  
+
 }
